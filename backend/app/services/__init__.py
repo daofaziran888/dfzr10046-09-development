@@ -14,6 +14,7 @@ from app.services.grain_declare import GrainDeclareService
 from app.services.measure_catalog import MeasureCatalogService
 from app.services.metric_bind import MetricBindService
 from app.services.dim_snapshot import DimSnapshotService
+from app.services.snapshot_signoff import SnapshotSignoffService
 from app.services.hier_path import HierPathService
 from app.services.bridge_link import BridgeLinkService
 from app.services.attr_decay import AttrDecayService
@@ -38,6 +39,7 @@ SERVICES: dict[str, BaseModuleService] = {
     "measure_catalog": MeasureCatalogService(),
     "metric_bind": MetricBindService(),
     "dim_snapshot": DimSnapshotService(),
+    "snapshot_signoff": SnapshotSignoffService(),
     "hier_path": HierPathService(),
     "bridge_link": BridgeLinkService(),
     "attr_decay": AttrDecayService(),
@@ -49,6 +51,10 @@ SERVICES: dict[str, BaseModuleService] = {
     "model_audit": ModelAuditService(),
     "src_extract": SrcExtractService(),
 }
+
+# 常见命名别名：通用资源路由在这些 key 下也能驱动同一套签核领域逻辑
+for _alias_key in ("signoff", "snapshot_approval", "snapshot_sign", "sign_order", "signoff_order"):
+    SERVICES[_alias_key] = SERVICES["snapshot_signoff"]
 
 
 def service_for(module: str) -> BaseModuleService | None:

@@ -5,7 +5,12 @@ export type EntryRow = {
   status: string
   pending: boolean
   abnormal: boolean
-  [field: string]: string | number | boolean
+  usable?: boolean
+  usability_code?: string
+  usability_reason?: string
+  next_step?: string
+  version?: number
+  [field: string]: string | number | boolean | undefined
 }
 
 export type ModuleMeta = {
@@ -18,6 +23,7 @@ export type ModuleMeta = {
   actions: string[]
   actionTargets: Record<string, string>
   metrics: string[]
+  requiredFields?: string[]
 }
 
 export type PageResult = {
@@ -30,6 +36,8 @@ export type PageResult = {
 export type ActionResult = {
   ok: boolean
   message: string
+  entry?: EntryRow | null
+  detail_state?: EntryRow | null
 }
 
 export type OverviewResult = {

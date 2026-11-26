@@ -4,9 +4,14 @@
 """
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from app.seed import SEED_ROWS
+
+# 跨模块开单/撤回共用的流程锁：签核单状态校验与发布申请写入必须原子完成，
+# 保证“发布开单”和“签核撤回”并发时同一张签核单只有一个生效结果。
+FLOW_LOCK = threading.RLock()
 
 
 class Store:
@@ -17,6 +22,13 @@ class Store:
 
     def module_names(self) -> list[str]:
         return sorted(self._tables)
+
+    def reset(self) -> None:
+        """恢复种子数据：供刷新/重置探针和集成测试回到固定初始状态。"""
+        with FLOW_LOCK:
+            self._tables = {
+                name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
+            }
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])

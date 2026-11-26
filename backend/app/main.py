@@ -34,6 +34,13 @@ def overview() -> dict[str, object]:
     return store.overview()
 
 
+@app.post("/api/reset")
+def reset_state() -> dict[str, object]:
+    """恢复种子数据：便于重复演练“制单—签核—撤回—并发开单”完整链路。"""
+    store.reset()
+    return {"ok": True, "modules": len(store.module_names())}
+
+
 # 资源路由含 /api/{module}，必须放在 health / overview 之后注册，
 # 否则固定路径会被动态路径抢先匹配。
 for module in ROUTERS:

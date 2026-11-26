@@ -81,5 +81,44 @@ npm run dev
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
 
-领域：数据工程
-子方向：数仓与数据湖
+## 快照双人签核 → 维度发布开单
+
+新增业务模块 `snapshot_signoff`（侧栏「快照签核单」，路由 `/snapshot_signoff`，
+另有 `/signoff`、`/snapshot_approval` 等别名），把维度快照的双人签核交给维度发布：
+
+1. 维度快照页每行有「发起快照签核 / 发起签核」入口，跳转到签核页并打开制单弹窗。
+2. 制单人提交后单据为 `待签核`；必须由**另一位操作员**在确认弹窗填写本人标识，
+   制单人与签核人相同时后端拒绝受理（`拒绝受理…同一人`）。
+3. 签核单绑定快照的 `修订号 + 快照摘要值`。快照执行「补改内容」（或「重建快照」）
+   产生新修订后，旧修订的未结签核单自动置为 `已失效`，必须按本次修订重新签核。
+4. 签核通过（`已签核`）后即生成「维度发布待办」：维度发布页顶部待办条与
+   `GET /api/dim_publish/todos`、`GET /api/snapshot_signoff/todos` 都能取到。
+5. 发布人在维度发布页选择有效签核单、填写说明后「提交并创建发布申请」，
+   实际写入一条 `dim_publish` 申请（状态 `待发布`、回写 `签核单编号/签核修订号/申请说明`），
+   同时签核单置为 `已使用`。
+6. 签核单可在 `待签核/已签核` 状态撤回（`已撤回`）。发布开单与签核撤回共用
+   `store.FLOW_LOCK`，在锁内完成「校验有效 → 写申请/撤回 → 占用单据」，
+   因此并发时同一张签核单只有一个结果：要么 `已使用`（已写入一笔发布申请，
+   撤回返回 409 冲突），要么 `已撤回`（开单返回 409 冲突，不写申请）。
+7. 列表/详情会附带 `usable / usability_code / usability_reason / next_step`，
+   签核页与发布页据此说明「这张单是否还可使用」以及此人下一步能做什么；
+   所有状态都在后端，刷新或重开两个页面后自动恢复一致。
+
+主要接口：
+
+```text
+POST /api/snapshot_signoff/submit            制单提交
+POST /api/snapshot_signoff/{id}/confirm      另一位操作员确认签核
+POST /api/snapshot_signoff/{id}/withdraw     撤回（与开单竞争，冲突返回 409）
+GET  /api/snapshot_signoff/{id}/usability    可用性/修订匹配/下一步
+POST /api/dim_publish/apply                  凭有效签核单原子创建发布申请
+GET  /api/dim_publish/todos                  签核通过且仍有效的发布待办
+POST /api/reset                              恢复种子数据
+```
+
+操作人可放在请求体 `operator/制单人/签核人/撤回人/发布人`，或用 `X-Operator` 头；
+前端顶栏的「当前操作员」保存在 localStorage。
+
+## 领域
+
+数据工程 · 子方向：数仓与数据湖

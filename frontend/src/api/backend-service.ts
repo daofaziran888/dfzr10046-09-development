@@ -1,8 +1,13 @@
 import { request } from './client'
+import { operatorHeaders, operatorName } from '@/composables/useOperator'
 import { moduleMeta } from '@/data/modules'
 import type { ActionResult, EntryRow, OverviewResult, PageResult } from '@/data/types'
 
 export { moduleMeta }
+
+function headers(extra?: Record<string, string>): Record<string, string> {
+  return { ...operatorHeaders(), ...(extra ?? {}) }
+}
 
 export async function listEntries(
   key: string,
@@ -14,13 +19,20 @@ export async function listEntries(
   return await response.json()
 }
 
+export async function getEntry(key: string, id: number | string): Promise<EntryRow> {
+  const response = await request(`/api/${key}/${id}`)
+  if (!response.ok) throw new Error('单据读取失败')
+  return await response.json()
+}
+
 export async function createEntry(
   key: string,
   values: Record<string, string>,
 ): Promise<ActionResult> {
   const response = await request(`/api/${key}`, {
     method: 'POST',
-    body: JSON.stringify({ values }),
+    headers: headers(),
+    body: JSON.stringify({ values, operator: operatorName() }),
   })
   return await response.json()
 }
@@ -29,10 +41,85 @@ export async function runAction(
   key: string,
   id: number,
   action: string,
+  extra: Record<string, unknown> = {},
 ): Promise<ActionResult> {
   const response = await request(`/api/${key}/${id}/actions`, {
     method: 'POST',
-    body: JSON.stringify({ action }),
+    headers: headers(),
+    body: JSON.stringify({
+      action,
+      operator: operatorName(),
+      ...extra,
+    }),
+  })
+  return await response.json()
+}
+
+// ---------------- 快照签核单专用接口 ----------------
+
+export async function submitSignoff(
+  values: Record<string, unknown>,
+): Promise<ActionResult> {
+  const response = await request('/api/snapshot_signoff/submit', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      operator: operatorName(),
+      ...values,
+    }),
+  })
+  return await response.json()
+}
+
+export async function confirmSignoff(
+  id: number | string,
+  payload: Record<string, unknown>,
+): Promise<ActionResult> {
+  const response = await request(`/api/snapshot_signoff/${id}/confirm`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      operator: operatorName(),
+      ...payload,
+    }),
+  })
+  return await response.json()
+}
+
+export async function withdrawSignoff(
+  id: number | string,
+  payload: Record<string, unknown> = {},
+): Promise<ActionResult> {
+  const response = await request(`/api/snapshot_signoff/${id}/withdraw`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      operator: operatorName(),
+      ...payload,
+    }),
+  })
+  return await response.json()
+}
+
+export async function signoffUsability(
+  id: number | string,
+): Promise<{ usable: boolean; code: string; reason: string; status?: string; next_step?: string }> {
+  const response = await request(`/api/snapshot_signoff/${id}/usability`)
+  return await response.json()
+}
+
+// ---------------- 维度发布凭单开单 ----------------
+
+export async function applyPublish(
+  payload: Record<string, unknown>,
+): Promise<ActionResult> {
+  const response = await request('/api/dim_publish/apply', {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      operator: operatorName(),
+      ...payload,
+    }),
   })
   return await response.json()
 }
